@@ -29,7 +29,6 @@ view model =
     , content =
         div []
             [ a [ href "/login" ] [ button [] [ text "Login" ] ]
-            , br [] []
             , a [ href "/register" ] [ button [] [ text "Register" ] ]
             ]
     }

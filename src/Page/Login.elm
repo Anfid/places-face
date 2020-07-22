@@ -46,6 +46,10 @@ view model =
         div []
             [ h1 [] [ text "Login here" ]
             , input [ type_ "text", placeholder "Name", value model.login, onInput Login ] []
+            , br [] []
             , input [ type_ "password", placeholder "Password", value model.password, onInput Password ] []
+            , br [] []
+            , br [] []
+            , button [] [ text "Submit" ]
             ]
     }

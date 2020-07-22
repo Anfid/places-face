@@ -56,6 +56,7 @@ view model =
             , br [] []
             , input [ type_ "password", placeholder "Re-enter Password", value model.passwordAgain, onInput PasswordAgain ] []
             , br [] []
+            , br [] []
             , button [] [ text "Submit" ]
             ]
     }
