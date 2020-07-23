@@ -7,6 +7,10 @@ h1 {
   text-align: center;
 }
 
+p {
+  color: #a89984
+}
+
 button {
   background-color: #4CAF50;
   border: none;

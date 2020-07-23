@@ -3,12 +3,11 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation as Navigation
 import Html
+import Page.Index
+import Page.Login
+import Page.Register
 import Url
 import Url.Parser as Parser
-
-import Page.Index
-import Page.Register
-import Page.Login
 
 
 
@@ -46,7 +45,7 @@ type Page
 
 init : flags -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
-    ( Model key url (IndexPage Page.Index.init), Cmd.none )
+    gotoUrl url <| Model key url <| IndexPage Page.Index.init
 
 
 
@@ -87,6 +86,7 @@ update msg model =
             Page.Login.update loginMsg loginModel
                 |> updateWith LoginPage LoginMsg model
 
+        -- This should not happen. Fires in case of event for wrong page
         ( _, _ ) ->
             ( model, Cmd.none )
 
@@ -113,16 +113,6 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model =
-    let
-        transformMsg pageView toMsg =
-            let
-                { title, content } =
-                    pageView
-            in
-            { title = title
-            , body = [ Html.map toMsg content ]
-            }
-    in
     case model.page of
         IndexPage index ->
             transformMsg (Page.Index.view index) IndexMsg
@@ -132,6 +122,16 @@ view model =
 
         LoginPage login ->
             transformMsg (Page.Login.view login) LoginMsg
+
+
+transformMsg pageView toMsg =
+    let
+        { title, content } =
+            pageView
+    in
+    { title = title
+    , body = [ Html.map toMsg content ]
+    }
 
 
 
@@ -144,7 +144,7 @@ type Route
     | LoginRoute
 
 
-parser: Parser.Parser (Route -> a) a
+parser : Parser.Parser (Route -> a) a
 parser =
     Parser.oneOf
         [ Parser.map IndexRoute Parser.top
