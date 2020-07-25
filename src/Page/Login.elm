@@ -1,8 +1,8 @@
 module Page.Login exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
-import Html exposing (Html, br, button, div, form, h1, img, input, p, text)
-import Html.Attributes exposing (class, placeholder, src, type_, value)
+import Html exposing (Html, br, button, div, form, h1, img, input, label, p, text)
+import Html.Attributes exposing (class, for, id, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Request exposing (LoginResult(..), ReplyError(..))
 import Session exposing (Session)
@@ -88,9 +88,7 @@ view model =
             [ h1 [] [ text "Login here" ]
             , form [ onSubmit Submit ]
                 [ credInput "text" "Login" model.login Login
-                , br [] []
                 , credInput "password" "Password" model.password Password
-                , br [] []
                 , br [] []
                 , case model.state of
                     Waiting ->
@@ -111,4 +109,7 @@ view model =
 
 credInput : String -> String -> String -> (String -> Msg) -> Html Msg
 credInput t p v a =
-    input [ type_ t, placeholder p, value v, onInput a ] []
+    div []
+        [ label [ class "cred_label", for p ] [ text p ]
+        , input [ class "cred_input", id p, type_ t, placeholder p, value v, onInput a ] []
+        ]

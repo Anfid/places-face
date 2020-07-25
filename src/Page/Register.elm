@@ -9,6 +9,7 @@ import Session exposing (Session)
 type alias Model =
     { session : Session
     , login : InputField
+    , email: InputField
     , password : InputField
     , passwordAgain : InputField
     , state: State
@@ -43,11 +44,12 @@ type State
 
 init : Session -> Model
 init session =
-    Model session (InputField "" <| Just Empty) (InputField "" <| Just Empty) (InputField "" <| Just Empty) Waiting
+    Model session (InputField "" <| Just Empty) (InputField "" <| Just Empty) (InputField "" <| Just Empty) (InputField "" <| Just Empty) Waiting
 
 
 type Msg
     = Login String
+    | Email String
     | Password String
     | PasswordAgain String
     | Submit
@@ -62,6 +64,9 @@ update msg model =
     case msg of
         Login val ->
             ( { model | login = updateFieldContent model.login val }, Cmd.none )
+
+        Email val ->
+            ( { model | email = updateFieldContent model.email val }, Cmd.none )
 
         Password val ->
             ( { model | password = updateFieldContent model.password val }, Cmd.none )
@@ -85,6 +90,7 @@ view model =
             [ form [ onSubmit Submit ]
                 [ h1 [] [ text "Register here" ]
                 , credInput "text" "Login" model.login.content Login
+                , credInput "text" "E-mail" model.login.content Email
                 , credInput "password" "Password" model.password.content Password
                 , credInput "password" "Re-enter Password" model.passwordAgain.content PasswordAgain
                 , br [] []
