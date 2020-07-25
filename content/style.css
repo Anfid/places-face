@@ -98,6 +98,9 @@ input {
   margin: 2px;
   transition: outline 0.2s;
 }
+input.err {
+  outline: 1px solid var(--red_b)
+}
 input:focus {
   outline: 1px solid var(--green_b);
 }

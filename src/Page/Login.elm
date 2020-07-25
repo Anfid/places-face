@@ -4,7 +4,7 @@ import Browser.Navigation as Navigation
 import Html exposing (Html, br, button, div, form, h1, img, input, label, p, text)
 import Html.Attributes exposing (class, for, id, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Request exposing (LoginResult(..), ReplyError(..))
+import Request exposing (UserResult(..), ResponseError(..))
 import Session exposing (Session)
 
 
@@ -35,7 +35,7 @@ type Msg
     = Login String
     | Password String
     | Submit
-    | Reply Request.LoginResult
+    | Response Request.UserResult
 
 
 
@@ -52,11 +52,11 @@ update msg model =
             ( { model | password = val }, Cmd.none )
 
         Submit ->
-            ( { model | state = Loading }, Request.login model.login model.password Reply )
+            ( { model | state = Loading }, Request.login model.login model.password Response )
 
-        Reply result ->
+        Response result ->
             case result of
-                LoginSuccess { token, username, email } ->
+                UserSuccess { token, username, email } ->
                     let
                         session =
                             model.session
@@ -65,12 +65,12 @@ update msg model =
                     , Navigation.pushUrl session.key "/"
                     )
 
-                LoginError UnauthorizedError ->
+                UserError UnauthorizedError ->
                     ( { model | error = Just "Login and password pair do not match", state = Waiting }
                     , Cmd.none
                     )
 
-                LoginError _ ->
+                UserError _ ->
                     ( { model | error = Just "Could not get reply from the server", state = Waiting }
                     , Cmd.none
                     )
