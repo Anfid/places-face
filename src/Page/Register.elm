@@ -1,14 +1,17 @@
 module Page.Register exposing (Model, Msg, init, update, view)
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html exposing (Html, br, button, div, form, h1, input, label, text)
+import Html.Attributes exposing (class, for, id, placeholder, type_, value)
+import Html.Events exposing (onInput, onSubmit)
+import Session exposing (Session)
 
 
 type alias Model =
-    { login : InputField
+    { session : Session
+    , login : InputField
     , password : InputField
     , passwordAgain : InputField
+    , state: State
     }
 
 
@@ -34,16 +37,20 @@ type FieldError
     | BadLen
 
 
+type State
+    = Waiting
+    | Loading
 
-init: Model
-init =
-    Model (InputField "" <| Just Empty) (InputField "" <| Just Empty) (InputField "" <| Just Empty)
+init : Session -> Model
+init session =
+    Model session (InputField "" <| Just Empty) (InputField "" <| Just Empty) (InputField "" <| Just Empty) Waiting
 
 
 type Msg
     = Login String
     | Password String
     | PasswordAgain String
+    | Submit
 
 
 
@@ -62,6 +69,9 @@ update msg model =
         PasswordAgain val ->
             ( { model | passwordAgain = updateFieldContent model.passwordAgain val }, Cmd.none )
 
+        Submit ->
+            ( model, Cmd.none )
+
 
 
 -- VIEW
@@ -72,14 +82,21 @@ view model =
     { title = "Register"
     , content =
         div []
-            [ h1 [] [ text "Register here" ]
-            , input [ type_ "text", placeholder "Name", value model.login.content, onInput Login ] []
-            , br [] []
-            , input [ type_ "password", placeholder "Password", value model.password.content, onInput Password ] []
-            , br [] []
-            , input [ type_ "password", placeholder "Re-enter Password", value model.passwordAgain.content, onInput PasswordAgain ] []
-            , br [] []
-            , br [] []
-            , button [] [ text "Submit" ]
+            [ form [ onSubmit Submit ]
+                [ h1 [] [ text "Register here" ]
+                , credInput "text" "Login" model.login.content Login
+                , credInput "password" "Password" model.password.content Password
+                , credInput "password" "Re-enter Password" model.passwordAgain.content PasswordAgain
+                , br [] []
+                , button [ class "cred_submit" ] [ text "Submit" ]
+                ]
             ]
     }
+
+
+credInput : String -> String -> String -> (String -> Msg) -> Html Msg
+credInput t p v a =
+    div []
+        [ label [ class "cred_label", for p ] [ text p ]
+        , input [ class "cred_input", id p, type_ t, placeholder p, value v, onInput a ] []
+        ]

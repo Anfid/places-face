@@ -6,6 +6,7 @@ import Html
 import Page.Index
 import Page.Login
 import Page.Register
+import Session exposing (Session)
 import Url
 import Url.Parser as Parser
 
@@ -31,8 +32,7 @@ main =
 
 
 type alias Model =
-    { key : Navigation.Key
-    , url : Url.Url
+    { url : Url.Url
     , page : Page
     }
 
@@ -45,7 +45,7 @@ type Page
 
 init : flags -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
-    gotoUrl url <| Model key url <| IndexPage Page.Index.init
+    gotoUrl url <| Model url <| IndexPage <| Page.Index.init <| Session key Nothing
 
 
 
@@ -66,7 +66,7 @@ update msg model =
         ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Navigation.pushUrl model.key (Url.toString url) )
+                    ( model, Navigation.pushUrl (getSession model).key (Url.toString url) )
 
                 Browser.External href ->
                     ( model, Navigation.load href )
@@ -124,6 +124,7 @@ view model =
             transformMsg (Page.Login.view login) LoginMsg
 
 
+transformMsg : { title : String, content : Html.Html msg } -> (msg -> Msg) -> Browser.Document Msg
 transformMsg pageView toMsg =
     let
         { title, content } =
@@ -157,13 +158,26 @@ gotoUrl : Url.Url -> Model -> ( Model, Cmd Msg )
 gotoUrl url model =
     case Parser.parse parser url of
         Just IndexRoute ->
-            ( { model | page = IndexPage Page.Index.init, url = url }, Cmd.none )
+            ( { model | page = IndexPage <| Page.Index.init <| getSession model, url = url }, Cmd.none )
 
         Just RegisterRoute ->
-            ( { model | page = RegisterPage Page.Register.init, url = url }, Cmd.none )
+            ( { model | page = RegisterPage <| Page.Register.init <| getSession model, url = url }, Cmd.none )
 
         Just LoginRoute ->
-            ( { model | page = LoginPage Page.Login.init, url = url }, Cmd.none )
+            ( { model | page = LoginPage <| Page.Login.init <| getSession model, url = url }, Cmd.none )
 
         Nothing ->
             ( model, Cmd.none )
+
+
+getSession : Model -> Session
+getSession model =
+    case model.page of
+        IndexPage m ->
+            m.session
+
+        LoginPage m ->
+            m.session
+
+        RegisterPage m ->
+            m.session

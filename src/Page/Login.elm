@@ -1,12 +1,14 @@
 module Page.Login exposing (Model, Msg, init, update, view)
 
 import Dict exposing (Dict)
-import Html exposing (Html, br, button, div, form, h1, input, p, text)
-import Html.Attributes exposing (placeholder, type_, value)
+import Html exposing (Html, br, button, div, form, h1, img, input, p, text)
+import Html.Attributes exposing (class, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Json.Decode exposing (Decoder, andThen, at, dict, fail, field, list, map, map2, oneOf, string, succeed)
 import Json.Encode
+import Browser.Navigation as Navigation
+import Session exposing (Session)
 
 
 
@@ -14,15 +16,22 @@ import Json.Encode
 
 
 type alias Model =
-    { login : String
+    { session : Session
+    , login : String
     , password : String
+    , state : State
     , error : Maybe String
     }
 
 
-init : Model
-init =
-    Model "" "" Nothing
+type State
+    = Waiting
+    | Loading
+
+
+init : Session -> Model
+init session =
+    Model session "" "" Waiting Nothing
 
 
 type Msg
@@ -50,14 +59,30 @@ update msg model =
 
         Reply result ->
             case result of
-                Ok (Success val) ->
-                    ( { model | error = Just val }, Cmd.none )
+                Ok (Success token) ->
+                    let
+                        session =
+                            model.session
+                    in
+                    ( { model | error = Nothing, state = Waiting, session = { session | token = Just token } }
+                    , Navigation.pushUrl session.key "/"
+                    )
 
                 Ok (Error (ValidationError e)) ->
-                    ( { model | error = if Dict.member "username" e then Just "Invalid username" else Nothing }, Cmd.none )
+                    ( { model
+                        | error =
+                            if Dict.member "username" e then
+                                Just "Invalid username"
+
+                            else
+                                Nothing
+                        , state = Waiting
+                      }
+                    , Cmd.none
+                    )
 
                 Ok (Error NotFoundError) ->
-                    ( { model | error = Just "User does not exist" }, Cmd.none )
+                    ( { model | error = Just "User does not exist", state = Waiting }, Cmd.none )
 
                 Err e ->
                     let
@@ -78,7 +103,7 @@ update msg model =
                                 Http.BadBody s ->
                                     "BadBody: " ++ s
                     in
-                    ( { model | error = Just errtxt }, Cmd.none )
+                    ( { model | error = Just errtxt, state = Waiting }, Cmd.none )
 
 
 submit : Model -> ( Model, Cmd Msg )
@@ -90,9 +115,9 @@ submit model =
                 , ( "password", Json.Encode.string model.password )
                 ]
     in
-    ( model
+    ( { model | state = Loading }
     , Http.post
-        { url = "http://192.168.0.188:7878/api/v1/users/login"
+        { url = "http://37.195.44.14:7878/api/v1/users/login"
         , body = Http.jsonBody json
         , expect = Http.expectJson Reply loginReplyDecoder
         }
@@ -152,7 +177,12 @@ view model =
                 , credInput "password" "Password" model.password Password
                 , br [] []
                 , br [] []
-                , button [ onClick Submit, type_ "submit" ] [ text "Submit" ]
+                , case model.state of
+                    Waiting ->
+                        button [ class "cred_submit", onClick Submit, type_ "submit" ] [ text "Submit" ]
+
+                    Loading ->
+                        button [ class "cred_submit", onClick Submit, type_ "submit" ] [ img [ src "/img/loading-horizontal.png" ] [] ]
                 ]
             , case model.error of
                 Just err ->

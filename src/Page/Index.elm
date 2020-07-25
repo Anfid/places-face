@@ -1,34 +1,38 @@
 module Page.Index exposing (Model, Msg, init, update, view)
 
-import Html exposing (..)
-import Html.Attributes exposing (href)
+import Browser.Navigation as Navigation
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
+import Session exposing (Session)
 
 
 type alias Model =
-    {  }
+    { session: Session
+    }
 
 
-init =
-    Model
+init : Session -> Model
+init session =
+    Model session
 
 
 type Msg
-    = Nothing
+    = GotoLink String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Nothing ->
-            ( model, Cmd.none )
+        GotoLink url ->
+            ( model, Navigation.pushUrl model.session.key url )
 
 
 view : Model -> { title : String, content : Html Msg }
-view model =
+view _ =
     { title = "Index"
     , content =
         div []
-            [ a [ href "/login" ] [ button [] [ text "Login" ] ]
-            , a [ href "/register" ] [ button [] [ text "Register" ] ]
+            [ button [ onClick <| GotoLink "/login" ] [ text "Login" ]
+            , button [ onClick <| GotoLink "/register" ] [ text "Register" ]
             ]
     }
