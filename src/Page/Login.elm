@@ -1,13 +1,10 @@
 module Page.Login exposing (Model, Msg, init, update, view)
 
-import Dict exposing (Dict)
+import Browser.Navigation as Navigation
 import Html exposing (Html, br, button, div, form, h1, img, input, p, text)
 import Html.Attributes exposing (class, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Http
-import Json.Decode exposing (Decoder, andThen, at, dict, fail, field, list, map, map2, oneOf, string, succeed)
-import Json.Encode
-import Browser.Navigation as Navigation
+import Request exposing (LoginResult(..), ReplyError(..))
 import Session exposing (Session)
 
 
@@ -38,7 +35,7 @@ type Msg
     = Login String
     | Password String
     | Submit
-    | Reply (Result Http.Error LoginReply)
+    | Reply Request.LoginResult
 
 
 
@@ -55,11 +52,11 @@ update msg model =
             ( { model | password = val }, Cmd.none )
 
         Submit ->
-            submit model
+            ( { model | state = Loading }, Request.login model.login model.password Reply )
 
         Reply result ->
             case result of
-                Ok (Success token) ->
+                LoginSuccess { token, username, email } ->
                     let
                         session =
                             model.session
@@ -68,97 +65,15 @@ update msg model =
                     , Navigation.pushUrl session.key "/"
                     )
 
-                Ok (Error (ValidationError e)) ->
-                    ( { model
-                        | error =
-                            if Dict.member "username" e then
-                                Just "Invalid username"
-
-                            else
-                                Nothing
-                        , state = Waiting
-                      }
+                LoginError UnauthorizedError ->
+                    ( { model | error = Just "Login and password pair do not match", state = Waiting }
                     , Cmd.none
                     )
 
-                Ok (Error NotFoundError) ->
-                    ( { model | error = Just "User does not exist", state = Waiting }, Cmd.none )
-
-                Err e ->
-                    let
-                        errtxt =
-                            case e of
-                                Http.BadUrl s ->
-                                    "BadUrl: " ++ s
-
-                                Http.Timeout ->
-                                    "Timeout"
-
-                                Http.NetworkError ->
-                                    "NetworkError"
-
-                                Http.BadStatus s ->
-                                    "BadStatus: " ++ String.fromInt s
-
-                                Http.BadBody s ->
-                                    "BadBody: " ++ s
-                    in
-                    ( { model | error = Just errtxt, state = Waiting }, Cmd.none )
-
-
-submit : Model -> ( Model, Cmd Msg )
-submit model =
-    let
-        json =
-            Json.Encode.object
-                [ ( "username", Json.Encode.string model.login )
-                , ( "password", Json.Encode.string model.password )
-                ]
-    in
-    ( { model | state = Loading }
-    , Http.post
-        { url = "http://37.195.44.14:7878/api/v1/users/login"
-        , body = Http.jsonBody json
-        , expect = Http.expectJson Reply loginReplyDecoder
-        }
-    )
-
-
-type LoginReply
-    = Success String
-    | Error ReplyError
-
-
-type ReplyError
-    = ValidationError (Dict String (List FieldError))
-    | NotFoundError
-
-
-type alias FieldError =
-    { code : String
-    , message : String
-    }
-
-
-loginReplyDecoder : Decoder LoginReply
-loginReplyDecoder =
-    oneOf
-        [ at [ "error", "kind" ] string |> andThen replyError |> map Error
-        , field "token" string |> map Success
-        ]
-
-
-replyError : String -> Decoder ReplyError
-replyError kind =
-    case kind of
-        "field_validation" ->
-            map ValidationError <| at [ "error", "info" ] <| dict <| list <| map2 FieldError (field "code" string) (field "message" string)
-
-        "not_found" ->
-            succeed NotFoundError
-
-        _ ->
-            fail "Unexpected error kind"
+                LoginError _ ->
+                    ( { model | error = Just "Could not get reply from the server", state = Waiting }
+                    , Cmd.none
+                    )
 
 
 
