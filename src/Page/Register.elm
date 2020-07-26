@@ -2,9 +2,9 @@ module Page.Register exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
 import Dict exposing (toList)
-import Html exposing (Html, br, button, div, form, h1, input, label, text)
+import Html exposing (Html, br, button, div, form, h1, input, label, span, text)
 import Html.Attributes exposing (class, for, id, placeholder, type_, value)
-import Html.Events exposing (onInput, onSubmit)
+import Html.Events exposing (onBlur, onInput, onSubmit)
 import Request exposing (FieldError, ResponseError(..), UserResult(..))
 import Session exposing (Session)
 
@@ -25,14 +25,24 @@ type alias InputField =
     }
 
 
-updateFieldContent : InputField -> String -> InputField
-updateFieldContent field content =
+updateFieldContent : String -> InputField -> InputField
+updateFieldContent content field =
     { field | content = content }
 
 
-updateFieldError : InputField -> Maybe FieldError -> InputField
-updateFieldError field err =
+updateFieldError : Maybe FieldError -> InputField -> InputField
+updateFieldError err field =
     { field | error = err }
+
+
+resetFieldErrors : Model -> Model
+resetFieldErrors model =
+    { model
+        | login = updateFieldError Nothing model.login
+        , email = updateFieldError Nothing model.email
+        , password = updateFieldError Nothing model.password
+        , passwordAgain = updateFieldError Nothing model.passwordAgain
+    }
 
 
 type State
@@ -42,7 +52,7 @@ type State
 
 init : Session -> Model
 init session =
-    Model session (InputField "" <| Nothing) (InputField "" <| Nothing) (InputField "" <| Nothing) (InputField "" <| Nothing) Waiting
+    Model session (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) Waiting
 
 
 type Msg
@@ -50,6 +60,7 @@ type Msg
     | Email String
     | Password String
     | PasswordAgain String
+    | ValidateFields
     | Submit
     | Response Request.UserResult
 
@@ -62,19 +73,30 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Login val ->
-            ( { model | login = updateFieldContent model.login val }, Cmd.none )
+            ( { model | login = updateFieldContent val model.login }, Cmd.none )
 
         Email val ->
-            ( { model | email = updateFieldContent model.email val }, Cmd.none )
+            ( { model | email = updateFieldContent val model.email }, Cmd.none )
 
         Password val ->
-            ( { model | password = updateFieldContent model.password val }, Cmd.none )
+            let
+                mod =
+                    { model | password = updateFieldContent val model.password }
+            in
+            ( { mod | passwordAgain = validatePasswordAgain mod.password mod.passwordAgain }
+            , Cmd.none
+            )
 
         PasswordAgain val ->
-            ( { model | passwordAgain = updateFieldContent model.passwordAgain val }, Cmd.none )
+            ( { model | passwordAgain = validatePasswordAgain model.password <| updateFieldContent val model.passwordAgain }
+            , Cmd.none
+            )
+
+        ValidateFields ->
+            ( validateFields model, Cmd.none )
 
         Submit ->
-            ( { model | state = Loading }
+            ( resetFieldErrors { model | state = Loading }
             , Request.register model.login.content model.email.content model.password.content Response
             )
 
@@ -82,10 +104,80 @@ update msg model =
             handleResponse resp model
 
 
+validateFields : Model -> Model
+validateFields model =
+    { model
+        | login = validateLogin model.login
+        , email = validateEmail model.email
+        , password = validatePassword model.password
+        , passwordAgain = validatePasswordAgain model.password model.passwordAgain
+    }
+
+
+validateLogin : InputField -> InputField
+validateLogin login =
+    if String.isEmpty login.content then
+        login
+
+    else if String.length login.content > 20 then
+        InputField login.content <|
+            Just <|
+                FieldError "len" "Username length is expected to be between 1 and 20 characters"
+
+    else
+        updateFieldError Nothing login
+
+
+validateEmail : InputField -> InputField
+validateEmail email =
+    let
+        err =
+            case String.split "@" email.content of
+                [ "" ] ->
+                    email.error
+
+                [ user, domain ] ->
+                    if not <| String.isEmpty user || String.isEmpty domain then
+                        Nothing
+
+                    else
+                        Just <| FieldError "email" "Invalid email"
+
+                _ ->
+                    Just <| FieldError "email" "Invalid email"
+    in
+    updateFieldError err email
+
+
+validatePassword : InputField -> InputField
+validatePassword pass =
+    if String.isEmpty pass.content then
+        pass
+
+    else if String.length pass.content < 8 || String.length pass.content > 128 then
+        InputField pass.content <|
+            Just <|
+                FieldError "len" "Pass length is expected to be between 8 and 128 characters"
+
+    else
+        updateFieldError Nothing pass
+
+
+validatePasswordAgain : InputField -> InputField -> InputField
+validatePasswordAgain pass pass2 =
+    if pass.content /= pass2.content && not (String.isEmpty pass2.content) then
+        InputField pass2.content <|
+            Just <|
+                FieldError "repeat" "Passwords do not match"
+
+    else
+        updateFieldError Nothing pass2
+
+
 handleResponse : Request.UserResult -> Model -> ( Model, Cmd Msg )
 handleResponse res model =
     case res of
-        UserSuccess { token, username, email } ->
+        UserSuccess { token } ->
             let
                 session =
                     model.session
@@ -112,13 +204,13 @@ handleValidationError model errs =
                 mod =
                     case e of
                         ( "username", fe :: _ ) ->
-                            { model | login = updateFieldError model.login <| Just fe }
+                            { model | login = updateFieldError (Just fe) model.login }
 
                         ( "email", fe :: _ ) ->
-                            { model | email = updateFieldError model.email <| Just fe }
+                            { model | email = updateFieldError (Just fe) model.email }
 
                         ( "password", fe :: _ ) ->
-                            { model | password = updateFieldError model.password <| Just fe }
+                            { model | password = updateFieldError (Just fe) model.password }
 
                         _ ->
                             model
@@ -153,8 +245,32 @@ credInput t ph field action =
     div []
         [ label [ class "cred_label", for ph ] [ text ph ]
         , case field.error of
-            Just { code, message } ->
-                input [ class "cred_input err", id ph, type_ t, placeholder ph, value field.content, onInput action ] []
+            Just { message } ->
+                div []
+                    [ input
+                        [ class "cred_input err"
+                        , id ph
+                        , type_ t
+                        , placeholder ph
+                        , value field.content
+                        , onInput action
+                        , onBlur ValidateFields
+                        ]
+                        []
+                    , span [ class "inline_tooltip" ] [ text message ]
+                    ]
+
             Nothing ->
-                input [ class "cred_input", id ph, type_ t, placeholder ph, value field.content, onInput action ] []
+                div []
+                    [ input
+                        [ class "cred_input"
+                        , id ph
+                        , type_ t
+                        , placeholder ph
+                        , value field.content
+                        , onInput action
+                        , onBlur ValidateFields
+                        ]
+                        []
+                    ]
         ]

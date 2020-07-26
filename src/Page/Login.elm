@@ -56,7 +56,7 @@ update msg model =
 
         Response result ->
             case result of
-                UserSuccess { token, username, email } ->
+                UserSuccess { token } ->
                     let
                         session =
                             model.session
