@@ -30,6 +30,7 @@ type alias UserResponse =
 type ResponseError
     = ValidationError (Dict String (List FieldError))
     | UnauthorizedError
+    | AlreadyExistsError
     | NotFoundError
     | ServerError
     | NetworkError
@@ -54,6 +55,9 @@ responseError kind =
     case kind of
         "field_validation" ->
             map ValidationError <| at [ "error", "info" ] <| dict <| list <| map2 FieldError (field "code" string) (field "message" string)
+
+        "already_exists" ->
+            succeed AlreadyExistsError
 
         "not_found" ->
             succeed NotFoundError
