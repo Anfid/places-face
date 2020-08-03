@@ -1,13 +1,16 @@
 module Page.Index exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Element exposing (alignRight, padding, row, spacing, text)
+import Element.Background as Background
+import Element.Input exposing (button)
+import Html exposing (Html)
 import Session exposing (Session)
+import Style exposing (bgColor, buttonStyle)
 
 
 type alias Model =
-    { session: Session
+    { session : Session
     }
 
 
@@ -31,8 +34,11 @@ view : Model -> { title : String, content : Html Msg }
 view _ =
     { title = "Index"
     , content =
-        div []
-            [ button [ onClick <| GotoLink "/login" ] [ text "Login" ]
-            , button [ onClick <| GotoLink "/register" ] [ text "Register" ]
-            ]
+        Element.layout [ Background.color bgColor ] <|
+            row [ alignRight, spacing 5, padding 5 ]
+                [ button (buttonStyle [])
+                    { onPress = Just <| GotoLink "/login", label = text "Login" }
+                , button (buttonStyle [])
+                    { onPress = Just <| GotoLink "/register", label = text "Register" }
+                ]
     }

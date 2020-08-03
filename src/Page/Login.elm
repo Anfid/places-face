@@ -1,11 +1,14 @@
 module Page.Login exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
-import Html exposing (Html, br, button, div, form, h1, img, input, label, p, text)
-import Html.Attributes exposing (class, for, id, placeholder, src, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
-import Request exposing (UserResult(..), ResponseError(..))
+import Element exposing (centerX, centerY, column, el, height, image, none, px, spacing, text, width)
+import Element.Background as Background
+import Element.Input as Input
+import Element.Region as Region
+import Html exposing (Html)
+import Request exposing (ResponseError(..), UserResult(..))
 import Session exposing (Session)
+import Style exposing (bgColor, buttonStyle, headingStyle, inputFieldStyle, textStyle)
 
 
 
@@ -84,32 +87,33 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Login"
     , content =
-        div []
-            [ h1 [] [ text "Login here" ]
-            , form [ onSubmit Submit ]
-                [ credInput "text" "Login" model.login Login
-                , credInput "password" "Password" model.password Password
-                , br [] []
+        Element.layout (textStyle [ Background.color bgColor ]) <|
+            column [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
+                [ el (headingStyle [ Region.heading 1 ]) (text "Login here")
+                , Input.username (inputFieldStyle [])
+                    { onChange = Login
+                    , text = model.login
+                    , placeholder = Just <| Input.placeholder [] <| text "Login"
+                    , label = Input.labelAbove [] <| text "Login:"
+                    }
+                , Input.currentPassword (inputFieldStyle [])
+                    { onChange = Password
+                    , text = model.password
+                    , placeholder = Just <| Input.placeholder [] <| text "Password"
+                    , label = Input.labelAbove [] <| text "Password:"
+                    , show = False
+                    }
                 , case model.state of
                     Waiting ->
-                        button [ class "cred_submit", onClick Submit, type_ "submit" ] [ text "Submit" ]
+                        Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Just Submit, label = el [ centerX ] <| text "Login" }
 
                     Loading ->
-                        button [ class "cred_submit", onClick Submit, type_ "submit" ] [ img [ src "/img/loading-horizontal.png" ] [] ]
+                        Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Nothing, label = image [ height (px 20) ] { src = "/img/loading-horizontal.png", description = "loading..." } }
+                , case model.error of
+                    Just err ->
+                        el [] (text err)
+
+                    Nothing ->
+                        el [] none
                 ]
-            , case model.error of
-                Just err ->
-                    p [] [ text err ]
-
-                Nothing ->
-                    p [] []
-            ]
     }
-
-
-credInput : String -> String -> String -> (String -> Msg) -> Html Msg
-credInput t p v a =
-    div []
-        [ label [ class "cred_label", for p ] [ text p ]
-        , input [ class "cred_input", id p, type_ t, placeholder p, value v, onInput a ] []
-        ]

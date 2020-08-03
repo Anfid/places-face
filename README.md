@@ -1,3 +1,3 @@
 # Build
 
-`$ elm make src/Main.elm --output=content/main.js`
+`$ elm make src/Main.elm --output=content/index.html`

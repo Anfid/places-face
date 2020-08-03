@@ -2,11 +2,14 @@ module Page.Register exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
 import Dict exposing (toList)
-import Html exposing (Html, br, button, div, form, h1, input, label, span, text)
-import Html.Attributes exposing (class, for, id, placeholder, type_, value)
-import Html.Events exposing (onBlur, onInput, onSubmit)
+import Element exposing (centerX, centerY, column, el, height, none, px, spacing, text, width)
+import Element.Background as Background
+import Element.Input as Input
+import Element.Region as Region
+import Html exposing (Html)
 import Request exposing (FieldError, ResponseError(..), UserResult(..))
 import Session exposing (Session)
+import Style exposing (bgColor, buttonStyle, headingStyle, inputFieldStyle, textStyle)
 
 
 type alias Model =
@@ -226,51 +229,36 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Register"
     , content =
-        div []
-            [ form [ onSubmit Submit ]
-                [ h1 [] [ text "Register here" ]
-                , credInput "text" "Login" model.login Login
-                , credInput "text" "E-mail" model.email Email
-                , credInput "password" "Password" model.password Password
-                , credInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
-                , br [] []
-                , button [ class "cred_submit" ] [ text "Submit" ]
-                ]
+        Element.layout (textStyle [ Background.color bgColor ]) <|
+            column
+            [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
+            [ el (headingStyle [ Region.heading 1 ]) (text "Register here")
+            , Input.username (inputFieldStyle [])
+                { onChange = Login
+                , text = model.login.content
+                , placeholder = Just <| Input.placeholder [] <| text "Login"
+                , label = Input.labelAbove [] <| text "Login:"
+                }
+            , Input.text (inputFieldStyle [])
+                { onChange = Email
+                , text = model.email.content
+                , placeholder = Just <| Input.placeholder [] <| text "E-mail"
+                , label = Input.labelAbove [] <| text "E-mail:"
+                }
+            , Input.newPassword (inputFieldStyle [])
+                { onChange = Password
+                , text = model.password.content
+                , placeholder = Just <| Input.placeholder [] <| text "Password"
+                , label = Input.labelAbove [] <| text "Password:"
+                , show = False
+                }
+            , Input.newPassword (inputFieldStyle [])
+                { onChange = PasswordAgain
+                , text = model.passwordAgain.content
+                , placeholder = Just <| Input.placeholder [] <| text "Re-enter Password"
+                , label = Input.labelAbove [] <| text "Re-enter Password:"
+                , show = False
+                }
+            , Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Just Submit, label = el [ centerX ] <| text "Register" }
             ]
     }
-
-
-credInput : String -> String -> InputField -> (String -> Msg) -> Html Msg
-credInput t ph field action =
-    div []
-        [ label [ class "cred_label", for ph ] [ text ph ]
-        , case field.error of
-            Just { message } ->
-                div []
-                    [ input
-                        [ class "cred_input err"
-                        , id ph
-                        , type_ t
-                        , placeholder ph
-                        , value field.content
-                        , onInput action
-                        , onBlur ValidateFields
-                        ]
-                        []
-                    , span [ class "inline_tooltip" ] [ text message ]
-                    ]
-
-            Nothing ->
-                div []
-                    [ input
-                        [ class "cred_input"
-                        , id ph
-                        , type_ t
-                        , placeholder ph
-                        , value field.content
-                        , onInput action
-                        , onBlur ValidateFields
-                        ]
-                        []
-                    ]
-        ]
