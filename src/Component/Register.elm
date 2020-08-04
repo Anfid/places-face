@@ -1,20 +1,18 @@
-module Page.Register exposing (Model, Msg, init, update, view)
+module Component.Register exposing (Model, Msg, init, update, view)
 
 import Browser.Navigation as Navigation
 import Dict exposing (toList)
-import Element exposing (centerX, centerY, column, el, height, none, px, spacing, text, width)
-import Element.Background as Background
+import Element exposing (Element, centerX, centerY, column, el, height, none, px, spacing, text, width)
 import Element.Input as Input
 import Element.Region as Region
-import Html exposing (Html)
+import PageMsg exposing (PageMsg)
 import Request exposing (FieldError, ResponseError(..), UserResult(..))
 import Session exposing (Session)
-import Style exposing (bgColor, buttonStyle, headingStyle, inputFieldStyle, textStyle)
+import Style exposing (buttonStyle, headingStyle, inputFieldStyle)
 
 
 type alias Model =
-    { session : Session
-    , login : InputField
+    { login : InputField
     , email : InputField
     , password : InputField
     , passwordAgain : InputField
@@ -53,9 +51,9 @@ type State
     | Loading
 
 
-init : Session -> Model
-init session =
-    Model session (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) Waiting
+init : Model
+init =
+    Model (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) (InputField "" Nothing) Waiting
 
 
 type Msg
@@ -72,14 +70,14 @@ type Msg
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Session -> Model -> ( Model, PageMsg, Cmd Msg )
+update msg session model =
     case msg of
         Login val ->
-            ( { model | login = updateFieldContent val model.login }, Cmd.none )
+            ( { model | login = updateFieldContent val model.login }, PageMsg.None, Cmd.none )
 
         Email val ->
-            ( { model | email = updateFieldContent val model.email }, Cmd.none )
+            ( { model | email = updateFieldContent val model.email }, PageMsg.None, Cmd.none )
 
         Password val ->
             let
@@ -87,24 +85,27 @@ update msg model =
                     { model | password = updateFieldContent val model.password }
             in
             ( { mod | passwordAgain = validatePasswordAgain mod.password mod.passwordAgain }
+            , PageMsg.None
             , Cmd.none
             )
 
         PasswordAgain val ->
             ( { model | passwordAgain = validatePasswordAgain model.password <| updateFieldContent val model.passwordAgain }
+            , PageMsg.None
             , Cmd.none
             )
 
         ValidateFields ->
-            ( validateFields model, Cmd.none )
+            ( validateFields model, PageMsg.None, Cmd.none )
 
         Submit ->
             ( resetFieldErrors { model | state = Loading }
+            , PageMsg.None
             , Request.register model.login.content model.email.content model.password.content Response
             )
 
         Response resp ->
-            handleResponse resp model
+            handleResponse resp session model
 
 
 validateFields : Model -> Model
@@ -177,23 +178,20 @@ validatePasswordAgain pass pass2 =
         updateFieldError Nothing pass2
 
 
-handleResponse : Request.UserResult -> Model -> ( Model, Cmd Msg )
-handleResponse res model =
+handleResponse : Request.UserResult -> Session -> Model -> ( Model, PageMsg, Cmd Msg )
+handleResponse res session model =
     case res of
         UserSuccess { token } ->
-            let
-                session =
-                    model.session
-            in
-            ( { model | state = Waiting, session = { session | token = Just token } }
+            ( { model | state = Waiting }
+            , PageMsg.Login token
             , Navigation.pushUrl session.key "/"
             )
 
         UserError (ValidationError e) ->
-            ( handleValidationError model <| toList e, Cmd.none )
+            ( handleValidationError model <| toList e, PageMsg.None, Cmd.none )
 
         _ ->
-            ( model, Cmd.none )
+            ( model, PageMsg.None, Cmd.none )
 
 
 handleValidationError : Model -> List ( String, List FieldError ) -> Model
@@ -225,40 +223,36 @@ handleValidationError model errs =
 -- VIEW
 
 
-view : Model -> { title : String, content : Html Msg }
+view : Model -> Element Msg
 view model =
-    { title = "Register"
-    , content =
-        Element.layout (textStyle [ Background.color bgColor ]) <|
-            column
-            [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
-            [ el (headingStyle [ Region.heading 1 ]) (text "Register here")
-            , Input.username (inputFieldStyle [])
-                { onChange = Login
-                , text = model.login.content
-                , placeholder = Just <| Input.placeholder [] <| text "Login"
-                , label = Input.labelAbove [] <| text "Login:"
-                }
-            , Input.text (inputFieldStyle [])
-                { onChange = Email
-                , text = model.email.content
-                , placeholder = Just <| Input.placeholder [] <| text "E-mail"
-                , label = Input.labelAbove [] <| text "E-mail:"
-                }
-            , Input.newPassword (inputFieldStyle [])
-                { onChange = Password
-                , text = model.password.content
-                , placeholder = Just <| Input.placeholder [] <| text "Password"
-                , label = Input.labelAbove [] <| text "Password:"
-                , show = False
-                }
-            , Input.newPassword (inputFieldStyle [])
-                { onChange = PasswordAgain
-                , text = model.passwordAgain.content
-                , placeholder = Just <| Input.placeholder [] <| text "Re-enter Password"
-                , label = Input.labelAbove [] <| text "Re-enter Password:"
-                , show = False
-                }
-            , Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Just Submit, label = el [ centerX ] <| text "Register" }
-            ]
-    }
+    column
+        [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
+        [ el (headingStyle [ Region.heading 1 ]) (text "Register here")
+        , Input.username (inputFieldStyle [])
+            { onChange = Login
+            , text = model.login.content
+            , placeholder = Just <| Input.placeholder [] <| text "Login"
+            , label = Input.labelAbove [] <| text "Login:"
+            }
+        , Input.text (inputFieldStyle [])
+            { onChange = Email
+            , text = model.email.content
+            , placeholder = Just <| Input.placeholder [] <| text "E-mail"
+            , label = Input.labelAbove [] <| text "E-mail:"
+            }
+        , Input.newPassword (inputFieldStyle [])
+            { onChange = Password
+            , text = model.password.content
+            , placeholder = Just <| Input.placeholder [] <| text "Password"
+            , label = Input.labelAbove [] <| text "Password:"
+            , show = False
+            }
+        , Input.newPassword (inputFieldStyle [])
+            { onChange = PasswordAgain
+            , text = model.passwordAgain.content
+            , placeholder = Just <| Input.placeholder [] <| text "Re-enter Password"
+            , label = Input.labelAbove [] <| text "Re-enter Password:"
+            , show = False
+            }
+        , Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Just Submit, label = el [ centerX ] <| text "Register" }
+        ]

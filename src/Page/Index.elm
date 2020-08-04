@@ -1,44 +1,128 @@
 module Page.Index exposing (Model, Msg, init, update, view)
 
-import Browser.Navigation as Navigation
-import Element exposing (alignRight, padding, row, spacing, text)
+import Component.Bar as BarComponent
+import Component.Login as LoginComponent
+import Component.Register as RegisterComponent
+import Element exposing (fill, none, width)
 import Element.Background as Background
-import Element.Input exposing (button)
 import Html exposing (Html)
+import PageMsg exposing (PageMsg)
 import Session exposing (Session)
-import Style exposing (bgColor, buttonStyle)
+import Style exposing (bgColor)
+
+
+
+-- MODEL
 
 
 type alias Model =
-    { session : Session
+    { bar : BarComponent.Model
+    , signinup : SignInUp
     }
 
 
-init : Session -> Model
-init session =
-    Model session
+type SignInUp
+    = Nothing
+    | Login LoginComponent.Model
+    | Register RegisterComponent.Model
+
+
+init : Model
+init =
+    { bar = BarComponent.init
+    , signinup = Nothing
+    }
+
+
+
+-- UPDATE
 
 
 type Msg
-    = GotoLink String
+    = BarMsg BarComponent.Msg
+    | LoginMsg LoginComponent.Msg
+    | RegisterMsg RegisterComponent.Msg
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Session -> Model -> ( Model, PageMsg, Cmd Msg )
+update msg session model =
     case msg of
-        GotoLink url ->
-            ( model, Navigation.pushUrl model.session.key url )
+        BarMsg m ->
+            handleUpdate updateBarModel BarMsg model <| BarComponent.update m session model.bar
+
+        LoginMsg m ->
+            case model.signinup of
+                Login loginModel ->
+                    handleUpdate updateLoginModel LoginMsg model <| LoginComponent.update m session loginModel
+
+                _ ->
+                    ( model, PageMsg.None, Cmd.none )
+
+        RegisterMsg m ->
+            case model.signinup of
+                Register registerModel ->
+                    handleUpdate updateRegisterModel RegisterMsg model <| RegisterComponent.update m session registerModel
+
+                _ ->
+                    ( model, PageMsg.None, Cmd.none )
 
 
-view : Model -> { title : String, content : Html Msg }
-view _ =
-    { title = "Index"
-    , content =
-        Element.layout [ Background.color bgColor ] <|
-            row [ alignRight, spacing 5, padding 5 ]
-                [ button (buttonStyle [])
-                    { onPress = Just <| GotoLink "/login", label = text "Login" }
-                , button (buttonStyle [])
-                    { onPress = Just <| GotoLink "/register", label = text "Register" }
-                ]
-    }
+handleUpdate :
+    (subModel -> Model -> Model)
+    -> (subMsg -> Msg)
+    -> Model
+    -> ( subModel, PageMsg, Cmd subMsg )
+    -> ( Model, PageMsg, Cmd Msg )
+handleUpdate toModel toMsg model ( subModel, pageMsg, subCmd ) =
+    let
+        newModel =
+            case pageMsg of
+                PageMsg.ShowLogin ->
+                    { model | signinup = Login LoginComponent.init }
+
+                PageMsg.ShowRegister ->
+                    { model | signinup = Register RegisterComponent.init }
+
+                _ ->
+                    model
+    in
+    ( toModel subModel newModel, pageMsg, Cmd.map toMsg subCmd )
+
+
+updateBarModel : BarComponent.Model -> Model -> Model
+updateBarModel barModel model =
+    { model | bar = barModel }
+
+
+updateLoginModel : LoginComponent.Model -> Model -> Model
+updateLoginModel loginModel model =
+    { model | signinup = Login loginModel }
+
+
+updateRegisterModel : RegisterComponent.Model -> Model -> Model
+updateRegisterModel registerModel model =
+    { model | signinup = Register registerModel }
+
+
+
+-- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    Element.layout [ Background.color bgColor ] <|
+        Element.column [ width fill ]
+            [ Element.map BarMsg <|
+                BarComponent.view model.bar
+            , case model.signinup of
+                Login loginModel ->
+                    Element.map LoginMsg <|
+                        LoginComponent.view loginModel
+
+                Register registerModel ->
+                    Element.map RegisterMsg <|
+                        RegisterComponent.view registerModel
+
+                Nothing ->
+                    none
+            ]
