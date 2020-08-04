@@ -3,7 +3,7 @@ module Page.Index exposing (Model, Msg, init, update, view)
 import Component.Bar as BarComponent
 import Component.Login as LoginComponent
 import Component.Register as RegisterComponent
-import Element exposing (fill, none, width)
+import Element exposing (fill, none, spacing, width)
 import Element.Background as Background
 import Html exposing (Html)
 import PageMsg exposing (PageMsg)
@@ -111,7 +111,7 @@ updateRegisterModel registerModel model =
 view : Model -> Html Msg
 view model =
     Element.layout [ Background.color bgColor ] <|
-        Element.column [ width fill ]
+        Element.column [ width fill, spacing 40 ]
             [ Element.map BarMsg <|
                 BarComponent.view model.bar
             , case model.signinup of

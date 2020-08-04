@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events as Events
 import Browser.Navigation as Navigation
 import Html
 import Page.Index
@@ -30,9 +31,9 @@ main =
 -- MODEL
 
 
-init : flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
+init : keys -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ url key =
-    gotoUrl url <| Model (Session key Nothing) url <| Index <| Page.Index.init
+    ( gotoUrl url <| Model (Session key Nothing) url <| Index <| Page.Index.init, Cmd.none )
 
 
 type alias Model =
@@ -60,7 +61,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model.page ) of
         ( UrlChanged url, _ ) ->
-            gotoUrl url model
+            ( gotoUrl url model, Cmd.none )
 
         ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
@@ -82,6 +83,10 @@ handleUpdate toPage toMsg model ( subModel, pageMsg, subCmd ) =
     )
 
 
+
+-- ROUTER
+
+
 type Route
     = IndexRoute
 
@@ -93,14 +98,14 @@ parser =
         ]
 
 
-gotoUrl : Url -> Model -> ( Model, Cmd Msg )
+gotoUrl : Url -> Model -> Model
 gotoUrl url model =
     case Parser.parse parser url of
         Just IndexRoute ->
-            ( { model | page = Index <| Page.Index.init, url = url }, Cmd.none )
+            { model | page = Index <| Page.Index.init, url = url }
 
         _ ->
-            ( model, Cmd.none )
+            model
 
 
 
@@ -121,4 +126,3 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.none
-    --Events.onResize (\w h -> classifyDevice { width = w, height = h }) |> Sub.map
