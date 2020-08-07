@@ -4,6 +4,8 @@ import Browser.Navigation as Navigation
 import Element exposing (Element, centerX, centerY, column, el, height, image, none, px, spacing, text, width)
 import Element.Input as Input
 import Element.Region as Region
+import Html.Events
+import Json.Decode as Decode
 import PageMsg exposing (PageMsg)
 import Request exposing (ResponseError(..), UserResult(..))
 import Session exposing (Session)
@@ -84,13 +86,13 @@ view : Model -> Element Msg
 view model =
     column [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
         [ el (headingStyle [ Region.heading 1 ]) (text "Login here")
-        , Input.username (inputFieldStyle [])
+        , Input.username (inputFieldStyle [ onEnter Submit ])
             { onChange = Login
             , text = model.login
             , placeholder = Just <| Input.placeholder [] <| text "Login"
             , label = Input.labelAbove [] <| text "Login:"
             }
-        , Input.currentPassword (inputFieldStyle [])
+        , Input.currentPassword (inputFieldStyle [ onEnter Submit ])
             { onChange = Password
             , text = model.password
             , placeholder = Just <| Input.placeholder [] <| text "Password"
@@ -110,3 +112,20 @@ view model =
             Nothing ->
                 el [] none
         ]
+
+
+onEnter : msg -> Element.Attribute msg
+onEnter msg =
+    Element.htmlAttribute
+        (Html.Events.on "keyup"
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\key ->
+                        if key == "Enter" then
+                            Decode.succeed msg
+
+                        else
+                            Decode.fail "Not the enter key"
+                    )
+            )
+        )

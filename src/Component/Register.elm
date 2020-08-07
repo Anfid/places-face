@@ -5,6 +5,8 @@ import Dict exposing (toList)
 import Element exposing (Element, centerX, centerY, column, el, height, none, px, spacing, text, width)
 import Element.Input as Input
 import Element.Region as Region
+import Html.Events
+import Json.Decode as Decode
 import PageMsg exposing (PageMsg)
 import Request exposing (FieldError, ResponseError(..), UserResult(..))
 import Session exposing (Session)
@@ -228,26 +230,26 @@ view model =
     column
         [ spacing 16, centerX, centerY, height (px 500), width (px 300) ]
         [ el (headingStyle [ Region.heading 1 ]) (text "Register here")
-        , Input.username (inputFieldStyle [])
+        , Input.username (inputFieldStyle [ onEnter Submit ])
             { onChange = Login
             , text = model.login.content
             , placeholder = Just <| Input.placeholder [] <| text "Login"
             , label = Input.labelAbove [] <| text "Login:"
             }
-        , Input.text (inputFieldStyle [])
+        , Input.text (inputFieldStyle [ onEnter Submit ])
             { onChange = Email
             , text = model.email.content
             , placeholder = Just <| Input.placeholder [] <| text "E-mail"
             , label = Input.labelAbove [] <| text "E-mail:"
             }
-        , Input.newPassword (inputFieldStyle [])
+        , Input.newPassword (inputFieldStyle [ onEnter Submit ])
             { onChange = Password
             , text = model.password.content
             , placeholder = Just <| Input.placeholder [] <| text "Password"
             , label = Input.labelAbove [] <| text "Password:"
             , show = False
             }
-        , Input.newPassword (inputFieldStyle [])
+        , Input.newPassword (inputFieldStyle [ onEnter Submit ])
             { onChange = PasswordAgain
             , text = model.passwordAgain.content
             , placeholder = Just <| Input.placeholder [] <| text "Re-enter Password"
@@ -256,3 +258,20 @@ view model =
             }
         , Input.button (buttonStyle [ centerX, height (px 50), width (px 150) ]) { onPress = Just Submit, label = el [ centerX ] <| text "Register" }
         ]
+
+
+onEnter : msg -> Element.Attribute msg
+onEnter msg =
+    Element.htmlAttribute
+        (Html.Events.on "keyup"
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\key ->
+                        if key == "Enter" then
+                            Decode.succeed msg
+
+                        else
+                            Decode.fail "Not the enter key"
+                    )
+            )
+        )

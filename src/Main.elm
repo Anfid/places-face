@@ -15,7 +15,7 @@ import Url.Parser as Parser exposing (Parser)
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Dimensions Model Msg
 main =
     Browser.application
         { init = init
@@ -31,17 +31,23 @@ main =
 -- MODEL
 
 
-init : keys -> Url -> Navigation.Key -> ( Model, Cmd Msg )
-init _ url key =
-    ( gotoUrl url <| Model (Session key Nothing) url <| Index <| Page.Index.init, Cmd.none )
+init : Dimensions -> Url -> Navigation.Key -> ( Model, Cmd Msg )
+init keys url key =
+    ( gotoUrl url <| Model (Session key Nothing) keys url <| Index <| Page.Index.init, Cmd.none )
 
 
 type alias Model =
     { session : Session
+    , dimensions : Dimensions
     , url : Url
     , page : Page
     }
 
+
+type alias Dimensions =
+    { width : Int
+    , height: Int
+    }
 
 type Page
     = Index Page.Index.Model
@@ -54,6 +60,7 @@ type Page
 type Msg
     = UrlChanged Url
     | LinkClicked Browser.UrlRequest
+    | Resize Int Int
     | IndexMsg Page.Index.Msg
 
 
@@ -70,6 +77,9 @@ update msg model =
 
                 Browser.External href ->
                     ( model, Navigation.load href )
+
+        ( Resize w h, _ ) ->
+            ( { model | dimensions = Dimensions w h }, Cmd.none )
 
         ( IndexMsg subMsg, Index subModel ) ->
             Page.Index.update subMsg model.session subModel
@@ -125,4 +135,4 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Events.onResize Resize
